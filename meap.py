@@ -35,6 +35,10 @@ def analyze(src):
                "-f", "SpectralStability",
                "-f", "AvgTonalCentroid",
                "-f", "AvgSpecFlatness",
+               "-f", "AvgChroma",
+               "-f", "AvgPitch",
+               "-f", "AvgMFCC",
+               "-f", "RMSAmplitude",
                f_path]
         run(cmd)
     return f_paths
@@ -53,19 +57,25 @@ def _load(meap):
 
     segs = []
     for l in lines[1:]:
+        valid = True
         d = {}
         cols = l.split('\t')
         idx = 0
         for key in keys:
             ncols = _ncols(key)
+            key = key.strip()
 
             d[key] = cols[idx:idx+ncols]
             if not key.startswith('#'):
                 d[key] = [float(x) for x in d[key]]
-            # if ncols == 1:
-            #     d[key] = d[key][0]
+            if ncols == 1:
+                if len(d[key]) > 0:
+                    d[key] = d[key][0]
+                else:
+                    valid = False
             idx += ncols
-        segs.append(d)
+        if valid:
+            segs.append(d)
     return segs
 
 def analysis(src):
