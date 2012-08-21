@@ -7,8 +7,14 @@ import numm
 
 import meap
 
+import os
+
 
 def cluster(src, key="AvgTonalCentroid(6)", nbins=15, min_volume=-30):
+    jsonfile = "%s-%s-%d.json" % (src, key, nbins)
+    if os.path.exists(jsonfile):
+        return deserialize(jsonfile)
+
     analyses = meap.analysis(src)
 
     segs = []
@@ -43,11 +49,15 @@ def cluster(src, key="AvgTonalCentroid(6)", nbins=15, min_volume=-30):
         out[cluster].append(segs[idx].tolist())
 
     out[nbins] = quiet_segs.tolist()
+
+    serialize(out, jsonfile)
     
     return out
 
 def serialize(clusters, filename):
     json.dump(clusters, open(filename, 'w'))
+def deserialize(filename):
+    return json.load(open(filename))
 
 def wave(src_np, clusters, outpattern, R=44100):
     for idx, segs in clusters.items():
@@ -60,7 +70,6 @@ def wave(src_np, clusters, outpattern, R=44100):
 
 if __name__=='__main__':
     import sys
-    import os
 
     keys = ["AvgTonalCentroid(6)", "AvgMFCC(13)", "AvgChroma(12)"]
     nclusters = 36
@@ -77,5 +86,4 @@ if __name__=='__main__':
                 src_np = numm.sound2np(src)
 
             clusters = cluster(src, key=key, nbins=nclusters)
-            serialize(clusters, jsonfile)
             wave(src_np, clusters, "%s-%s-%d-%%06d.wav" % (src, key, nclusters))
