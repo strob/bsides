@@ -6,6 +6,7 @@ import numpy as np
 class Tape:
     def __init__(self, path):
         self.path = path
+        self._used = set()
 
     def getClusters(self, nbins=36, key="AvgMFCC(13)"):
         clusters = cluster.cluster(self.path, key=key, nbins=nbins)
@@ -24,6 +25,20 @@ class Tape:
             out[_name_cluster(int(idx))] = [Seg(self, st, dur) for st,dur in segs]
 
         return out
+
+    def getUnusedClusters(self):
+        clusters = self.getClusters()
+        for key in clusters:
+            clusters[key] = filter(lambda x: x not in self._used, clusters[key])
+        return clusters
+
+    def use(self, seg):
+        self._used.add(seg)
+
+    def copy(self):
+        t = Tape(self.path)
+        t._used = self._used.copy()
+        return t
 
     def getArray(self):
         return numm.sound2np(self.path)
