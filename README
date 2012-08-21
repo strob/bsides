@@ -1,0 +1,25 @@
+bsides
+--
+
+rearrange Side A of a thrift store cassette tape[1] onto Side B.
+
+[in development]
+
+== Installation
+
+MEAPSoft[2] is used for audio analysis;
+place the ``MEAPsoft-2.0.beta'' into a ``lib'' directory.
+
+Numm[3] is also required for many scripts.
+
+
+
+[1] the term may be inaccessible to our younger readers*; ``cassette''
+    refers to a pocket-sized cartridge containing two-sided magnetic
+    plastic tape on which an audio signal may be serialized.
+    --
+    *yikes! http://newsfeed.time.com/2011/08/22/as-oed-makes-room-for-new-words-cassette-tape-gets-nixed/
+
+[2] http://labrosa.ee.columbia.edu/meapsoft/download.php
+
+[3] http://numm.org/numm
