@@ -28,17 +28,18 @@ def mouse_in(type, px, py, button):
         cur_frame = 0
 
 def audio_out(a):
-    global cur_frame
+    global cur_frame, cur_idx
     seg = clusters[cur_cluster][cur_idx]
-    segarr = arr[seg.st_idx:seg.end_idx]
+    segarr = arr[seg.st_idx:seg.end_idx][cur_frame:]
 
     if len(segarr) < len(a):
-        print 'warning: very short segment'
         a[:len(segarr)] = segarr
+        cur_frame = 0
+        cur_idx = (cur_idx + 1) % (len(clusters[cur_cluster]))
         return
 
-    a[:] = np.roll(segarr,-cur_frame,axis=0)[:len(a)]
-    cur_frame = (cur_frame + len(a)) % (len(segarr))
+    a[:] = segarr[:len(a)]
+    cur_frame = cur_frame + len(a)
 
 def video_out(a):
     # draw a grid of segment circles
