@@ -15,16 +15,16 @@ def cluster(src, key="AvgTonalCentroid(6)", nbins=15, min_volume=-30):
     if os.path.exists(jsonfile):
         return deserialize(jsonfile)
 
-    analyses = meap.analysis(src)
+    analysis = meap.analysis(src)
 
     segs = []
     features = []
     rms = []
-    for idx, analysis in enumerate(analyses):
-        for X in analysis:
-            segs.append((X["onset_time"] + 300 * idx, X["chunk_length"]))
-            features.append(X[key])
-            rms.append(X["RMSAmplitude(1)"])
+
+    for idx, X in enumerate(analysis):
+        segs.append((X["onset_time"], X["chunk_length"], idx))
+        features.append(X[key])
+        rms.append(X["RMSAmplitude(1)"])
 
     rms = np.array(rms)
     features = np.array(features)
@@ -61,17 +61,18 @@ def deserialize(filename):
 
 def wave(src_np, clusters, outpattern, R=44100):
     for idx, segs in clusters.items():
-        segchunks = [src_np[int(R*st):int(R*(st+dur))] for (st, dur) in segs]
+        segchunks = [src_np[int(R*st):int(R*(st+dur))] for (st, dur, _idx) in segs]
         if len(segchunks) == 0:
             print 'zero-length cluster', idx
             continue
         segchunks = np.concatenate(segchunks)
-        numm.np2sound(segchunks, outpattern % (idx))
+        numm.np2sound(segchunks, outpattern % (int(idx)))
 
 if __name__=='__main__':
     import sys
 
-    keys = ["AvgTonalCentroid(6)", "AvgMFCC(13)", "AvgChroma(12)"]
+    # keys = ["AvgTonalCentroid(6)", "AvgMFCC(13)", "AvgChroma(12)"]
+    keys = ["AvgMFCC(13)"]
     nclusters = 36
 
     for src in sys.argv[1:]:
