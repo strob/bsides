@@ -4,6 +4,8 @@ import meap
 import numm
 import numpy as np
 
+import pickle
+
 class Tape:
     def __init__(self, path, key="AvgMFCC(13)"):
         self.path = path
@@ -17,6 +19,12 @@ class Tape:
 
     def getFeatures(self):
         return self._features
+
+    def getSegments(self):
+        segs = set()
+        for k,vals in self.getClusters().items():
+            segs = segs.union(vals)
+        return segs
 
     def _get_features(self):
         a = meap.analysis(self.path)
@@ -106,8 +114,24 @@ which expands into an Arrangement,
 & from there into a Sequence.
 """
 
+class Composition:
+    def __init__(self, circles):
+        self.circles = circles
+
+    def append(self, c):
+        self.circles.append(c)
+
+    def save(self, filename):
+        pickle.dump(self, open(filename, 'w'))
+
+    @classmethod
+    def fromfile(cls, filename):
+        return pickle.load(open(filename))
+
 class Circle:
-    def __init__(self, clusters=None, theta=0, duration=10):
+    def __init__(self, clusters=None, theta=0, duration=None):
+        if clusters is None:
+            clusters = {}
         self.clusters = clusters # {ClusterID: NSegs}
         self.theta = theta
         self.duration = duration
@@ -146,7 +170,7 @@ class Circle:
         return Arrangement(timings)
 
 class Arrangement:
-    def __init__(self, timings=None, fills=None, duration=10):
+    def __init__(self, timings=None, fills=None, duration=None):
         self.timings = timings
         self.fills = fills
         self.duration = duration
