@@ -21,7 +21,7 @@ class Tape:
         out = {}
 
         for idx,segs in clusters.items():
-            out[_name_cluster(int(idx))] = [Seg(self, st, dur) for st,dur in segs]
+            out[_name_cluster(int(idx))] = [Seg(self, st, dur, int(aidx)) for st,dur,aidx in segs]
 
         return out
 
@@ -30,10 +30,11 @@ class Tape:
 
 R=44100                         # XXX: where, ever, do you go?
 class Seg:
-    def __init__(self, tape, start, duration):
+    def __init__(self, tape, start, duration, idx):
         self.tape = tape
         self.start = start
         self.duration = duration
+        self.idx = idx
 
     @property
     def st_idx(self):
