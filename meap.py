@@ -78,12 +78,20 @@ def _load(meap):
             segs.append(d)
     return segs
 
+def _combine(analyses, t=300):
+    out = []
+    for idx,analysis in enumerate(analyses):
+        for X in analysis:
+            X["onset_time"] += t*idx
+            out.append(X)
+    return out
+
 def analysis(src):
     f_paths = glob.glob(src + '*.feat')
     if len(f_paths) == 0:
         f_paths = analyze(src)
 
-    return [_load(X) for X in f_paths]
+    return _combine([_load(X) for X in f_paths])
     
 
 if __name__=='__main__':
