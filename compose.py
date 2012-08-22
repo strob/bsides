@@ -1,15 +1,33 @@
 import cluster
+import meap
 
 import numm
 import numpy as np
 
 class Tape:
-    def __init__(self, path):
+    def __init__(self, path, key="AvgMFCC(13)"):
         self.path = path
+        self.key = key
+
         self._used = set()
 
-    def getClusters(self, nbins=36, key="AvgMFCC(13)"):
-        clusters = cluster.cluster(self.path, key=key, nbins=nbins)
+        self._clusters = self._get_clusters()
+        self._features = self._get_features()
+        self._array = self._get_array()
+
+    def getFeatures(self):
+        return self._features
+
+    def _get_features(self):
+        a = meap.analysis(self.path)
+        out = [X[self.key] for X in a]
+        return np.array(out)
+
+    def getClusters(self):
+        return self._clusters
+
+    def _get_clusters(self, nbins=36):
+        clusters = cluster.cluster(self.path, key=self.key, nbins=nbins)
 
         def _name_cluster(idx):
             if idx < 10:
@@ -29,19 +47,25 @@ class Tape:
     def getUnusedClusters(self):
         clusters = self.getClusters()
         for key in clusters:
-            clusters[key] = filter(lambda x: x not in self._used, clusters[key])
+            clusters[key] = filter(lambda x: not self.isUsed(x), clusters[key])
         return clusters
 
     def use(self, seg):
-        self._used.add(seg)
+        self._used.add(seg.idx)
+
+    def isUsed(self, seg):
+        return seg.idx in self._used
 
     def copy(self):
         t = Tape(self.path)
         t._used = self._used.copy()
         return t
 
-    def getArray(self):
+    def _get_array(self):
         return numm.sound2np(self.path)
+
+    def getArray(self):
+        return self._array
 
 R=44100                         # XXX: where, ever, do you go?
 class Seg:

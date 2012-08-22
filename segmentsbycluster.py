@@ -36,6 +36,7 @@ def audio_out(a):
         a[:len(segarr)] = segarr
         cur_frame = 0
         cur_idx = (cur_idx + 1) % (len(clusters[cur_cluster]))
+        tape.use(seg)
         return
 
     a[:] = segarr[:len(a)]
@@ -56,8 +57,10 @@ def video_out(a):
         color = (255,255,255)
         stroke = 1
         if i == cur_idx:
-            color = (255,0,0)
+            color = (0,255,0)
             stroke = -1
+        elif tape.isUsed(segs[i]):
+            color = (255, 0, 0)
 
         x,y = (col*stepx + r, row*stepy + r)
         cv2.circle(a, (x,y), r, color, stroke)
