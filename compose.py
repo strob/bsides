@@ -23,6 +23,24 @@ class Tape:
         out = [X[self.key] for X in a]
         return np.array(out)
 
+    def getClosestUnused(self, seg):
+        F = self.getFeatures()
+        obs = F[seg.idx]
+
+        closeness = pow(F - obs, 2).sum(axis=1).argsort()
+        print closeness.shape
+
+        for idx in closeness:
+            if idx not in self._used:
+                return self.getCluster(idx)
+
+    def getCluster(self, idx):
+        "returns (cluster_key, cluster_idx)"
+        for cluster in self._clusters.keys():
+            cluster_indices = [X.idx for X in self._clusters[cluster]]
+            if idx in cluster_indices:
+                return (cluster, cluster_indices.index(idx))
+
     def getClusters(self):
         return self._clusters
 

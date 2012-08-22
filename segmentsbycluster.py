@@ -3,14 +3,49 @@ from compose import Tape
 import cv2
 import numpy as np
 
+ADVANCEMENT_MODES = ['by_cluster', 'by_start', 'by_nearest']
+mode_idx = 0
+
 cur_cluster = '0'
 cur_idx = 0
 cur_frame = 0
 
-def keyboard_in(type, button):
+def getseg():
+    return clusters[cur_cluster][cur_idx]
+
+def advance():
     global cur_cluster, cur_idx, cur_frame
-    if len(button) == 1:
-        cur_cluster = button.upper()
+
+    cur_frame = 0
+
+    seg = getseg()
+    tape.use(seg)
+
+    mode = ADVANCEMENT_MODES[mode_idx]
+    # FIXME
+    if mode == 'by_cluster':
+        cur_idx = (cur_idx + 1) % (len(clusters[cur_cluster]))
+    elif mode == 'by_start':
+        cur_cluster, cur_idx = tape.getCluster(seg.idx + 1)
+    elif mode == 'by_nearest':
+        cur_cluster, cur_idx = tape.getClosestUnused(seg)
+
+    # XXX: What if a cluster is all used?!
+
+    if tape.isUsed(getseg()):
+        advance()
+
+def keyboard_in(type, key):
+    global cur_cluster, cur_idx, cur_frame, mode_idx
+
+    print type, key
+
+    if type == 'key-press' and key == 'space':
+        mode_idx = (mode_idx + 1) % (len(ADVANCEMENT_MODES))
+        print ADVANCEMENT_MODES[mode_idx]
+
+    if type == 'key-press' and len(key) == 1:
+        cur_cluster = key.upper()
 
         cur_idx = 0
         cur_frame = 0
@@ -29,14 +64,13 @@ def mouse_in(type, px, py, button):
 
 def audio_out(a):
     global cur_frame, cur_idx
-    seg = clusters[cur_cluster][cur_idx]
+    seg = getseg()
     segarr = arr[seg.st_idx:seg.end_idx][cur_frame:]
 
     if len(segarr) < len(a):
         a[:len(segarr)] = segarr
-        cur_frame = 0
-        cur_idx = (cur_idx + 1) % (len(clusters[cur_cluster]))
-        tape.use(seg)
+        advance()
+
         return
 
     a[:] = segarr[:len(a)]
