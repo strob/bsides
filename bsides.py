@@ -1,6 +1,6 @@
 # zoom-based UI to compose a full tape
 
-from compose import Tape, Composition, Circle
+from compose import Tape, Composition, Square
 
 import numpy as np
 import cv2
@@ -8,7 +8,7 @@ import cv2
 ZOOM_LEVELS = ['structure', 'rhythm', 'sound']
 zoom_idx = 0
 
-rhythm_circle = None
+rhythm_square = None
 
 def video_out(a):
     cv2.putText(a, ZOOM_LEVELS[zoom_idx], (10, 20), cv2.FONT_HERSHEY_PLAIN, 1, (255,255,255))
@@ -32,26 +32,28 @@ def sound_video(a):
             color = (255,0,0)
         elif sound_idx == i:
             color = (0,255,0)
+        elif s in sound_selection:
+            color = (0,255,255)
 
         a[y:y+h,x:x+w] += color
 
 def structure_video(a):
-    ncircles = len(composition.circles)
-    N = int(np.ceil(np.sqrt(ncircles)))
+    nsquares = len(composition.rhythms)
+    N = int(np.ceil(np.sqrt(nsquares)))
     if N > 0:
         w,h = 320/N, 240/N
-    for idx,circle in composition.circles:
+    for idx,square in composition.rhythms:
         x= idx %N
         y= int(idx/N)
 
-        draw_circle(a[y:y+h,x:x+w], circle)
+        draw_square(a[y:y+h,x:x+w], square)
 
 def rhythm_video(a):
-    draw_circle(a, rhythm_circle)
+    draw_square(a, rhythm_square)
 
-def draw_circle(a, circle):
-    clusters = circle.clusters
-    arrangement = circle.getArrangement(tape)
+def draw_square(a, square):
+    groups = square.groups
+    arrangement = square.getArrangement()
     timings = arrangement.timings
 
     times = sorted(timings.keys())
@@ -65,10 +67,10 @@ def draw_circle(a, circle):
             if seg == s:
                 return t
 
-    nclusters = len(clusters.keys())
-    h = a.shape[0] / nclusters
+    ngroups = len(groups)
+    h = a.shape[0] / ngroups
     w = a.shape[1]
-    for idx,(clus,segs) in enumerate(clusters.items()):
+    for idx,segs in enumerate(groups):
         y = idx * h
         for s in segs:
             st = get_timing(s)
@@ -89,10 +91,10 @@ def keyboard_in(type, button):
         sound_keys(type, button)
 
 def structure_keys(type, button):
-    global zoom_idx, rhythm_circle
+    global zoom_idx, rhythm_square
     if type == 'key-press' and button == 'n':
-        rhythm_circle = Circle()
-        composition.append(rhythm_circle)
+        rhythm_square = Square()
+        composition.append(rhythm_square)
         zoom_idx = ZOOM_LEVELS.index('rhythm')
 def rhythm_keys(type, button):
     global zoom_idx
@@ -104,7 +106,7 @@ def sound_keys(type, button):
 
 
 def mouse_in(type, px, py, button):
-    print type, px, py, button
+    # print type, px, py, button
     if ZOOM_LEVELS[zoom_idx] == 'sound':
         sound_mouse(type, px, py, button)
 
@@ -114,6 +116,11 @@ sound_order_idx = 0
 sound_pages = []
 sound_page_idx = 0
 sound_idx = 0
+
+# mouse drag interaction
+sound_dragging = False
+sound_dragging_first = None
+sound_selection = []
 
 def sound_init():
     global sound_page_idx, sound_idx
@@ -135,7 +142,7 @@ def paginate_sound():
         pass
 
 def sound_mouse(type, px, py, button):
-    global sound_idx
+    global sound_idx, sound_dragging, sound_dragging_first, sound_selection, zoom_idx
 
     nsegs = len(sound_pages[sound_page_idx])
     N = int(np.ceil(np.sqrt(nsegs)))
@@ -143,11 +150,28 @@ def sound_mouse(type, px, py, button):
     _oidx = sound_idx
     sound_idx = min(nsegs-1, int(px*N) + N*int(py*N))
 
-    print sound_idx
+    if type == 'mouse-button-press':
+        sound_selection = []
+        sound_dragging = True
+        sound_dragging_first = sound_pages[sound_page_idx][sound_idx]
 
-    if sound_idx != _oidx:
-        pass
-    
+    if type == 'mouse-move' and sound_dragging:
+        spage = sound_pages[sound_page_idx]
+        sound_selection = []
+        for idx in range(spage.index(sound_dragging_first), sound_idx):
+            if not tape.isUsed(spage[idx]):
+                sound_selection.append(spage[idx])
+
+    if type == 'mouse-button-release':
+        # Add selection to the rhythm
+        sound_dragging = False
+        rhythm_square.append(sound_selection)
+
+        for seg in sound_selection:
+            tape.use(seg)
+
+        zoom_idx = ZOOM_LEVELS.index('rhythm')
+
 
 if __name__=='__main__':
     import sys

@@ -115,11 +115,11 @@ which expands into an Arrangement,
 """
 
 class Composition:
-    def __init__(self, circles):
-        self.circles = circles
+    def __init__(self, rhythms):
+        self.rhythms = rhythms
 
     def append(self, c):
-        self.circles.append(c)
+        self.rhythms.append(c)
 
     def save(self, filename):
         pickle.dump(self, open(filename, 'w'))
@@ -128,8 +128,39 @@ class Composition:
     def fromfile(cls, filename):
         return pickle.load(open(filename))
 
+class Square:
+    "cluster-independent alternative to `circle`"
+    def __init__(self):
+        self.groups = []
+
+    def append(self, group):
+        self.groups.append(group)
+
+    def getDuration(self):
+        dur = 0
+        for g in self.groups:
+            dur += sum([x.duration for x in g])
+        return dur
+
+    def getArrangement(self):
+        timing = {}
+        offset = 0
+
+        duration = self.getDuration()
+
+        for group in self.groups:
+            step = (duration - offset) / len(group)
+
+            for idx,seg in enumerate(group):
+                # XXX: prevent exact intersections?
+                timing[idx * step + offset] = seg
+
+            offset += group[0].duration
+
+        return Arrangement(timing)
+
 class Circle:
-    def __init__(self, clusters=None, theta=0, duration=None):
+    def __init__(self, clusters=None, theta=0, duration=10):
         if clusters is None:
             clusters = {}
         self.clusters = clusters # {ClusterID: NSegs}
