@@ -149,6 +149,10 @@ class Square:
         duration = self.getDuration()
 
         for group in self.groups:
+            if len(group) == 0:
+                print 'Warning: empty group'
+                continue
+
             step = (duration - offset) / len(group)
 
             for idx,seg in enumerate(group):

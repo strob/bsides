@@ -42,9 +42,9 @@ def structure_video(a):
     N = int(np.ceil(np.sqrt(nsquares)))
     if N > 0:
         w,h = 320/N, 240/N
-    for idx,square in composition.rhythms:
-        x= idx %N
-        y= int(idx/N)
+    for idx,square in enumerate(composition.rhythms):
+        x= w*(idx %N)
+        y= h*(int(idx/N))
 
         draw_square(a[y:y+h,x:x+w], square)
 
@@ -98,9 +98,12 @@ def structure_keys(type, button):
         zoom_idx = ZOOM_LEVELS.index('rhythm')
 def rhythm_keys(type, button):
     global zoom_idx
-    if type == 'key-press' and button == 'n':
-        sound_init()
-        zoom_idx = ZOOM_LEVELS.index('sound')
+    if type == 'key-press':
+        if button == 'n':
+            sound_init()
+            zoom_idx = ZOOM_LEVELS.index('sound')
+        elif button == 'Escape':
+            zoom_idx = ZOOM_LEVELS.index('structure')
 def sound_keys(type, button):
     pass
 
@@ -142,7 +145,7 @@ def paginate_sound():
         pass
 
 def sound_mouse(type, px, py, button):
-    global sound_idx, sound_dragging, sound_dragging_first, sound_selection, zoom_idx
+    global sound_idx, sound_dragging, sound_selection, sound_dragging_first, zoom_idx
 
     nsegs = len(sound_pages[sound_page_idx])
     N = int(np.ceil(np.sqrt(nsegs)))
@@ -156,21 +159,31 @@ def sound_mouse(type, px, py, button):
         sound_dragging_first = sound_pages[sound_page_idx][sound_idx]
 
     if type == 'mouse-move' and sound_dragging:
-        spage = sound_pages[sound_page_idx]
-        sound_selection = []
-        for idx in range(spage.index(sound_dragging_first), sound_idx):
-            if not tape.isUsed(spage[idx]):
-                sound_selection.append(spage[idx])
+        sound_make_selection()
 
     if type == 'mouse-button-release':
         # Add selection to the rhythm
         sound_dragging = False
+        sound_make_selection()
         rhythm_square.append(sound_selection)
 
         for seg in sound_selection:
             tape.use(seg)
 
         zoom_idx = ZOOM_LEVELS.index('rhythm')
+
+def sound_make_selection():
+    global sound_selection
+
+    spage = sound_pages[sound_page_idx]
+    sound_selection = []
+
+    st = min(spage.index(sound_dragging_first), sound_idx)
+    end = max(spage.index(sound_dragging_first), sound_idx) + 1
+    print 'stEND',st,end
+    for idx in range(st,end):
+        if not tape.isUsed(spage[idx]):
+            sound_selection.append(spage[idx])
 
 
 if __name__=='__main__':
