@@ -10,6 +10,10 @@ zoom_idx = 0
 
 rhythm_square = None
 
+audio_frame = 0
+
+playseg = None
+
 def video_out(a):
     cv2.putText(a, ZOOM_LEVELS[zoom_idx], (10, 20), cv2.FONT_HERSHEY_PLAIN, 1, (255,255,255))
     if ZOOM_LEVELS[zoom_idx] == 'structure':
@@ -18,6 +22,30 @@ def video_out(a):
         rhythm_video(a)
     else:
         sound_video(a)
+
+def audio_out(a):
+    global audio_frame
+    seg = getseg()
+
+    if seg is None:
+        return
+
+    segarr = seg.tape.getArray()[seg.st_idx:seg.end_idx][audio_frame:]
+
+    if len(segarr) < len(a):
+        a[:len(segarr)] = segarr
+        audio_advance()
+        return audio_out(a[len(segarr):])
+
+    a[:] = segarr[:len(a)]
+    audio_frame += len(a)
+
+def getseg():
+    return playseg
+
+def audio_advance():
+    global playseg
+    playseg = None
 
 def sound_video(a):
     segs = sound_pages[sound_page_idx]
@@ -145,7 +173,7 @@ def paginate_sound():
         pass
 
 def sound_mouse(type, px, py, button):
-    global sound_idx, sound_dragging, sound_selection, sound_dragging_first, zoom_idx
+    global sound_idx, sound_dragging, sound_selection, sound_dragging_first, zoom_idx, playseg, audio_frame
 
     nsegs = len(sound_pages[sound_page_idx])
     N = int(np.ceil(np.sqrt(nsegs)))
@@ -172,6 +200,10 @@ def sound_mouse(type, px, py, button):
 
         zoom_idx = ZOOM_LEVELS.index('rhythm')
 
+    if _oidx != sound_idx or playseg is None:
+        audio_frame = 0
+        playseg = sound_pages[sound_page_idx][sound_idx]
+
 def sound_make_selection():
     global sound_selection
 
@@ -180,7 +212,6 @@ def sound_make_selection():
 
     st = min(spage.index(sound_dragging_first), sound_idx)
     end = max(spage.index(sound_dragging_first), sound_idx) + 1
-    print 'stEND',st,end
     for idx in range(st,end):
         if not tape.isUsed(spage[idx]):
             sound_selection.append(spage[idx])

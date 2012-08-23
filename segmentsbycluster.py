@@ -63,7 +63,7 @@ def mouse_in(type, px, py, button):
         cur_frame = 0
 
 def audio_out(a):
-    global cur_frame, cur_idx
+    global cur_frame
     seg = getseg()
     segarr = arr[seg.st_idx:seg.end_idx][cur_frame:]
 
