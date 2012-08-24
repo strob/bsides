@@ -31,7 +31,7 @@ def video_out(a):
 
 def audio_out(a):
     global audio_frame
-    seg = getseg()
+    seg = getplayseg()
 
     if seg is None:
         return
@@ -47,6 +47,13 @@ def audio_out(a):
     audio_frame += len(a)
 
 def getseg():
+    if ZOOM_LEVELS[zoom_idx] == 'sound':
+        return sound_pages[sound_page_idx][sound_idx]
+    elif ZOOM_LEVELS[zoom_idx] == 'rhythm':
+        if rhythm_sequence:
+            return rhythm_sequence[rhythm_idx]
+
+def getplayseg():
     return playseg
 
 def audio_advance():
@@ -65,6 +72,9 @@ def audio_advance():
         playseg = None
 
 def sound_video(a):
+    if sound_page_idx >= len(sound_pages) or len(sound_pages[sound_page_idx]) == 0:
+        print 'warning: big sound_page_idx', sound_page_idx, len(sound_pages)
+        return
     segs = sound_pages[sound_page_idx]
     N = int(np.ceil(np.sqrt(len(segs))))
     w,h = (int(320/N), int(240/N))
@@ -83,6 +93,7 @@ def sound_video(a):
         a[y:y+h,x:x+w] += color
 
     cv2.putText(a, 'page %d(%d)' % (sound_page_idx, len(sound_pages)), (10, 220), cv2.FONT_HERSHEY_PLAIN, 1, (255,255,0))
+    cv2.putText(a, 'sort by %s' % (SOUND_ORDERINGS[sound_order_idx]), (10, 200), cv2.FONT_HERSHEY_PLAIN, 1, (255,255,0))
 
 def structure_video(a):
     nsquares = len(composition.rhythms)
@@ -175,13 +186,24 @@ def rhythm_keys(type, button):
         elif button == 'Escape':
             zoom_idx = ZOOM_LEVELS.index('structure')
 def sound_keys(type, button):
-    global sound_page_idx, sound_idx
-    try:
-        i = int(button)
-        sound_page_idx = i
-        sound_idx = 0
-    except ValueError:
-        pass
+    global sound_page_idx, sound_idx, sound_order_idx
+
+    if type == 'key-press':
+        try:
+            i = int(button)
+            sound_page_idx = i
+            sound_idx = 0
+            return
+        except ValueError:
+            pass
+
+        if button == 'c':
+            sound_order_idx = SOUND_ORDERINGS.index('cluster')
+        elif button == 'm':
+            sound_order_idx = SOUND_ORDERINGS.index('similarity')
+        elif button == 't':
+            sound_order_idx = SOUND_ORDERINGS.index('time')
+        paginate_sound()
 
 
 def mouse_in(type, px, py, button):
@@ -201,6 +223,9 @@ sound_dragging = False
 sound_dragging_first = None
 sound_selection = []
 
+# similarity search invarients
+sound_similarity_base = None
+
 def sound_init():
     global sound_page_idx, sound_idx
     sound_idx = 0
@@ -208,17 +233,63 @@ def sound_init():
     paginate_sound()
 
 def paginate_sound():
-    global sound_pages
+    global sound_pages, sound_page_idx
+    print 'start paginate'
+
+    curseg = getseg()
+    if curseg:
+        print 'curseg', curseg.start, curseg.idx
+
+    sound_pages = []
+    sound_page_idx = 0
+
     if SOUND_ORDERINGS[sound_order_idx] == 'time':
-        segs = list(tape.getSegments())
+        print 'order by time'
+        segs = tape.getSegments()
         segs.sort(cmp=lambda x,y: int(44100*(x.start-y.start)))
         npages = 10
         npp = len(segs) / npages
-        sound_pages = []
-        for i in range(10):
-            sound_pages.append(segs[i*npp:(i+1)*npp])
+
+        for i in range(npages):
+            psegs = segs[i*npp:(i+1)*npp]
+            sound_pages.append(psegs)
+            if curseg and curseg in psegs:
+                print 'curseg in timepage', i
+                sound_page_idx = i
+    elif SOUND_ORDERINGS[sound_order_idx] == 'cluster':
+        clusters = tape.getClusters()
+        for idx,(k,v) in enumerate(sorted(clusters.items())):
+            sound_pages.append(v)
+            if curseg and curseg in v:
+                print 'curseg in cluster', idx
+                sound_page_idx = idx
     else:
-        pass
+        # similarity
+        sound_page_idx = 0
+
+        sound_similarity_base = curseg
+        sound_similarity_npp = len(tape.getSegments()) / 10
+
+        # XXX: make lazy (ie. per-page)?
+
+        similarity_tape = Tape(tape.path)
+        base = sound_similarity_base
+        nsegs = len(tape.getSegments())
+        for p in range(10):
+            page = []
+            sound_pages.append(page)
+            for i in range(sound_similarity_npp):
+                if i + p*sound_similarity_npp >= (nsegs):
+                    print 'enough!', i, p
+                    return
+
+                cluster,idx = similarity_tape.getClosestUnused(base)
+                base = similarity_tape.getClusters()[cluster][idx]
+                print 'base', base, base.start, base.idx
+                similarity_tape.use(base)
+                page.append(base)
+
+    print 'done paginate'
 
 def sound_mouse(type, px, py, button):
     global sound_idx, sound_dragging, sound_selection, sound_dragging_first, zoom_idx, playseg, audio_frame
@@ -249,7 +320,7 @@ def sound_mouse(type, px, py, button):
         rhythm_init()
         zoom_idx = ZOOM_LEVELS.index('rhythm')
 
-    if _oidx != sound_idx or playseg is None:
+    if (_oidx != sound_idx) or (playseg is None):
         audio_frame = 0
         playseg = sound_pages[sound_page_idx][sound_idx]
 
@@ -283,7 +354,7 @@ if __name__=='__main__':
     if len(sys.argv) > 2:
         comppath = sys.argv[2]
 
-    tape = Tape(source)
+    tape = Tape(source, nbins=9)
     composition = Composition([])
     if os.path.exists(comppath):
         composition = Composition.fromfile(comppath)

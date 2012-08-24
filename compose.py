@@ -7,24 +7,26 @@ import numpy as np
 import pickle
 
 class Tape:
-    def __init__(self, path, key="AvgMFCC(13)"):
+    def __init__(self, path, key="AvgMFCC(13)", nbins=36):
         self.path = path
         self.key = key
 
         self._used = set()
 
-        self._clusters = self._get_clusters()
         self._features = self._get_features()
-        self._array = self._get_array()
+        self._segments = self._get_segments()
+        self._clusters = self._get_clusters(nbins=nbins)
 
     def getFeatures(self):
         return self._features
 
+    def _get_segments(self):
+        a = meap.analysis(self.path)
+        return [Seg(self, X["onset_time"], X["chunk_length"], idx)
+                for idx,X in enumerate(a)]
+
     def getSegments(self):
-        segs = set()
-        for k,vals in self.getClusters().items():
-            segs = segs.union(vals)
-        return segs
+        return self._segments
 
     def _get_features(self):
         a = meap.analysis(self.path)
@@ -49,9 +51,6 @@ class Tape:
             if idx in cluster_indices:
                 return (cluster, cluster_indices.index(idx))
 
-    def getClusters(self):
-        return self._clusters
-
     def _get_clusters(self, nbins=36):
         clusters = cluster.cluster(self.path, key=self.key, nbins=nbins)
 
@@ -66,9 +65,12 @@ class Tape:
         out = {}
 
         for idx,segs in clusters.items():
-            out[_name_cluster(int(idx))] = [Seg(self, st, dur, int(aidx)) for st,dur,aidx in segs]
+            out[_name_cluster(int(idx))] = [self._segments[int(aidx)] for st,dur,aidx in segs]
 
         return out
+
+    def getClusters(self):
+        return self._clusters
 
     def getUnusedClusters(self):
         clusters = self.getClusters()
@@ -91,6 +93,9 @@ class Tape:
         return numm.sound2np(self.path)
 
     def getArray(self):
+        if not hasattr(self, "_array"):
+            self._array = self._get_array()
+
         return self._array
 
 R=44100                         # XXX: where, ever, do you go?
