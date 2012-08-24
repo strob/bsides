@@ -82,6 +82,8 @@ def sound_video(a):
 
         a[y:y+h,x:x+w] += color
 
+    cv2.putText(a, 'page %d(%d)' % (sound_page_idx, len(sound_pages)), (10, 220), cv2.FONT_HERSHEY_PLAIN, 1, (255,255,0))
+
 def structure_video(a):
     nsquares = len(composition.rhythms)
     N = int(np.ceil(np.sqrt(nsquares)))
@@ -173,7 +175,13 @@ def rhythm_keys(type, button):
         elif button == 'Escape':
             zoom_idx = ZOOM_LEVELS.index('structure')
 def sound_keys(type, button):
-    pass
+    global sound_page_idx, sound_idx
+    try:
+        i = int(button)
+        sound_page_idx = i
+        sound_idx = 0
+    except ValueError:
+        pass
 
 
 def mouse_in(type, px, py, button):
