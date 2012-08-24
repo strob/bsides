@@ -43,12 +43,15 @@ def getseg():
     elif ZOOM_LEVELS[zoom_idx] == 'rhythm':
         if rhythm_sequence:
             return rhythm_sequence[rhythm_idx]
+    else:
+        if rhythm_sequence:
+            return rhythm_sequence[rhythm_idx]
 
 def getplayseg():
     return playseg
 
 def audio_advance():
-    global playseg, rhythm_idx, audio_frame
+    global playseg, rhythm_idx, audio_frame, rhythm_sequence, structure_rhythm_idx
     audio_frame = 0
     if ZOOM_LEVELS[zoom_idx] == 'rhythm':
         if rhythm_sequence is None:
@@ -64,11 +67,12 @@ def audio_advance():
             playseg = None
             return
         rhythm_idx = (1 + rhythm_idx)
-        if rhythm_idx >= len(rhythms[structure_rhythm_idx]):
+        if rhythm_idx >= len(rhythm_sequence):
             rhythm_idx = 0
             structure_rhythm_idx = (1 + structure_rhythm_idx) % (len(rhythms))
+            rhythm_sequence = rhythms[structure_rhythm_idx].getArrangement().getSequence().segs
 
-        playseg = rhythms[structure_rhythm_idx][rhythm_idx]
+        playseg = rhythm_sequence[rhythm_idx]
 
     else:
         playseg = None
@@ -189,7 +193,18 @@ def rhythm_keys(type, button):
             sound_init()
             zoom_idx = ZOOM_LEVELS.index('sound')
         elif button == 'Escape':
+            structure_init()
             zoom_idx = ZOOM_LEVELS.index('structure')
+
+def structure_init():
+    global structure_rhythm_idx, playseg, audio_frame, rhythm_sequence
+    audio_frame = 0
+    structure_rhythm_idx = 0
+    rhythm_idx = 0
+    rhythm_sequence = composition.rhythms[structure_rhythm_idx].getArrangement().getSequence().segs
+    if len(composition.rhythms) > 0:
+        playseg = rhythm_sequence[rhythm_idx]
+    
 
 def sound_keys(type, button):
     global sound_page_idx, sound_idx, sound_order_idx
@@ -373,5 +388,7 @@ if __name__=='__main__':
             for g in r.groups:
                 for s in g:
                     tape.use(s)
+
+    structure_init()
 
     numm.run(**globals())
