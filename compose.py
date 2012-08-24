@@ -38,7 +38,6 @@ class Tape:
         obs = F[seg.idx]
 
         closeness = pow(F - obs, 2).sum(axis=1).argsort()
-        print closeness.shape
 
         for idx in closeness:
             if idx not in self._used:

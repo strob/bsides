@@ -67,7 +67,6 @@ def audio_advance():
         rhythm_idx = (1 + rhythm_idx) % len(rhythm_sequence)
         playseg = rhythm_sequence[rhythm_idx]
 
-        print 'RI', rhythm_idx
     else:
         playseg = None
 
@@ -286,7 +285,6 @@ def paginate_sound():
 
                 cluster,idx = similarity_tape.getClosestUnused(base)
                 base = similarity_tape.getClusters()[cluster][idx]
-                print 'base', base, base.start, base.idx
                 similarity_tape.use(base)
                 page.append(base)
 
@@ -356,6 +354,9 @@ if __name__=='__main__':
         comppath = sys.argv[2]
 
     tape = Tape(source, nbins=9)
+    # preload array
+    tape.getArray()
+
     composition = Composition([])
     if os.path.exists(comppath):
         composition = Composition.fromfile(comppath)
