@@ -33,6 +33,14 @@ class Tape:
         out = [X[self.key] for X in a]
         return np.array(out)
 
+    def orderBySegment(self, seg):
+        F = self.getFeatures()
+        obs = F[seg.idx]
+
+        closeness = pow(F - obs, 2).sum(axis=1).argsort()
+
+        return [self._segments[X] for X in closeness]
+
     def getClosestUnused(self, seg):
         F = self.getFeatures()
         obs = F[seg.idx]

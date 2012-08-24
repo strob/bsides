@@ -201,6 +201,8 @@ def structure_init():
     audio_frame = 0
     structure_rhythm_idx = 0
     rhythm_idx = 0
+    if len(composition.rhythms) == 0:
+        return
     rhythm_sequence = composition.rhythms[structure_rhythm_idx].getArrangement().getSequence().segs
     if len(composition.rhythms) > 0:
         playseg = rhythm_sequence[rhythm_idx]
@@ -224,7 +226,9 @@ def sound_keys(type, button):
             sound_order_idx = SOUND_ORDERINGS.index('similarity')
         elif button == 't':
             sound_order_idx = SOUND_ORDERINGS.index('time')
-        if button in 'cmt':
+        elif button == 'o':
+            sound_order_idx = SOUND_ORDERINGS.index('closeness')
+        if button in 'cmto':
             paginate_sound()
 
 
@@ -235,7 +239,7 @@ def mouse_in(type, px, py, button):
     elif ZOOM_LEVELS[zoom_idx] == 'rhythm':
         rhythm_mouse(type, px, py, button)
 
-SOUND_ORDERINGS = ['time', 'cluster', 'similarity']
+SOUND_ORDERINGS = ['time', 'cluster', 'similarity', 'closeness']
 sound_order_idx = 0
 
 sound_pages = []
@@ -288,9 +292,7 @@ def paginate_sound():
             if curseg and curseg in v:
                 print 'curseg in cluster', idx
                 sound_page_idx = idx
-    else:
-        # similarity
-
+    elif SOUND_ORDERINGS[sound_order_idx] == 'similarity':
         similarity_tape = Tape(tape.path, nbins=9)
         base = curseg
         nsegs = min(len(similarity_tape.getSegments()), 100)
@@ -303,7 +305,14 @@ def paginate_sound():
             similarity_tape.use(base)
             page.append(base)
 
-        print 'done paginate'
+    else:
+        # closeness
+        base = curseg
+        page = []
+        ordered = tape.orderBySegment(base)
+        sound_pages.append(ordered[:100])
+
+    print 'done paginate'
 
 def rhythm_mouse(type, px, py, button):
     ngroups = len(rhythm_square.groups)
