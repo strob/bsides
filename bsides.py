@@ -227,7 +227,8 @@ sound_selection = []
 sound_similarity_base = None
 
 def sound_init():
-    global sound_page_idx, sound_idx
+    global sound_order_idx, sound_page_idx, sound_idx
+    sound_order_idx = 0
     sound_idx = 0
     sound_page_idx = 0
     paginate_sound()
@@ -358,5 +359,9 @@ if __name__=='__main__':
     composition = Composition([])
     if os.path.exists(comppath):
         composition = Composition.fromfile(comppath)
+        for r in composition.rhythms:
+            for g in r.groups:
+                for s in g:
+                    tape.use(s)
 
     numm.run(**globals())
