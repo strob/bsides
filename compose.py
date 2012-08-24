@@ -96,7 +96,8 @@ class Tape:
 R=44100                         # XXX: where, ever, do you go?
 class Seg:
     def __init__(self, tape, start, duration, idx):
-        self.tape = tape
+        # XXX: REMOVE ARG
+        self.tape = None#tape
         self.start = start
         self.duration = duration
         self.idx = idx

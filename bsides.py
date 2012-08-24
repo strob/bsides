@@ -36,7 +36,7 @@ def audio_out(a):
     if seg is None:
         return
 
-    segarr = seg.tape.getArray()[seg.st_idx:seg.end_idx][audio_frame:]
+    segarr = tape.getArray()[seg.st_idx:seg.end_idx][audio_frame:]
 
     if len(segarr) < len(a):
         a[:len(segarr)] = segarr
@@ -137,11 +137,19 @@ def draw_square(a, square):
             x1 = int(st*w/duration)
             x2 = int(end*w/duration)
 
-            a[y:y+h,x1:x2] += (0,255,0)
+            color = (0,255,0)
+            if s == curseg:
+                color = (255,0,0)
+
+            a[y:y+h,x1:x2] += color
             
 
 def keyboard_in(type, button):
     print 'keyboard_in', type, button
+
+    if button == 's':
+        composition.save(comppath)
+
     if ZOOM_LEVELS[zoom_idx] == 'structure':
         structure_keys(type, button)
     elif ZOOM_LEVELS[zoom_idx] == 'rhythm':
