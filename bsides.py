@@ -268,30 +268,20 @@ def paginate_sound():
                 sound_page_idx = idx
     else:
         # similarity
-        sound_page_idx = 0
-
-        sound_similarity_base = curseg
-        sound_similarity_npp = len(tape.getSegments()) / 10
-
-        # XXX: make lazy (ie. per-page)?
 
         similarity_tape = Tape(tape.path)
-        base = sound_similarity_base
-        nsegs = len(tape.getSegments())
-        for p in range(10):
-            page = []
-            sound_pages.append(page)
-            for i in range(sound_similarity_npp):
-                if i + p*sound_similarity_npp >= (nsegs):
-                    print 'enough!', i, p
-                    return
+        base = curseg
+        nsegs = min(len(similarity_tape.getSegments()), 100)
+        page = []
+        sound_pages.append(page)
 
-                cluster,idx = similarity_tape.getClosestUnused(base)
-                base = similarity_tape.getClusters()[cluster][idx]
-                similarity_tape.use(base)
-                page.append(base)
+        while len(page) < nsegs:
+            cluster,idx = similarity_tape.getClosestUnused(base)
+            base = similarity_tape.getClusters()[cluster][idx]
+            similarity_tape.use(base)
+            page.append(base)
 
-    print 'done paginate'
+        print 'done paginate'
 
 def rhythm_mouse(type, px, py, button):
     ngroups = len(rhythm_square.groups)
