@@ -5,6 +5,10 @@ rearrange Side A of a thrift store cassette tape[1] onto Side B.
 
 [in development]
 
+== Usage
+
+% python bsides.py AUDIO_PATH.wav [filename.pkl]
+
 == Installation
 
 MEAPSoft[2] is used for audio analysis;
