@@ -8,11 +8,8 @@ import cv2
 ZOOM_LEVELS = ['structure', 'rhythm', 'sound']
 zoom_idx = 0
 
-rhythm_square = None
-
-audio_frame = 0
-
 playseg = None
+audio_frame = 0
 
 def video_out(a):
     cv2.putText(a, ZOOM_LEVELS[zoom_idx], (10, 20), cv2.FONT_HERSHEY_PLAIN, 1, (255,255,255))
@@ -22,6 +19,15 @@ def video_out(a):
         rhythm_video(a)
     else:
         sound_video(a)
+
+# def audio_out(a):
+#     if ZOOM_LEVELS[zoom_idx] == 'sound':
+#         sound_audio(a)
+#     elif ZOOM_LEVELS[zoom_idx] == 'rhythm':
+#         rhythm_audio(a)
+
+# def rhythm_audio(a):
+#     pass
 
 def audio_out(a):
     global audio_frame
@@ -44,8 +50,19 @@ def getseg():
     return playseg
 
 def audio_advance():
-    global playseg
-    playseg = None
+    global playseg, rhythm_idx, audio_frame
+    audio_frame = 0
+    if ZOOM_LEVELS[zoom_idx] == 'rhythm':
+        if rhythm_sequence is None:
+            playseg = None
+            return
+
+        rhythm_idx = (1 + rhythm_idx) % len(rhythm_sequence)
+        playseg = rhythm_sequence[rhythm_idx]
+
+        print 'RI', rhythm_idx
+    else:
+        playseg = None
 
 def sound_video(a):
     segs = sound_pages[sound_page_idx]
@@ -76,6 +93,18 @@ def structure_video(a):
 
         draw_square(a[y:y+h,x:x+w], square)
 
+rhythm_square = None
+rhythm_sequence = None
+rhythm_idx = 0
+
+def rhythm_init():
+    global rhythm_sequence, rhythm_idx
+    rhythm_idx = 0
+    if len(rhythm_square.groups) > 0:
+        rhythm_sequence = rhythm_square.getArrangement().getSequence().segs
+    else:
+        rhythm_sequence = None
+
 def rhythm_video(a):
     draw_square(a, rhythm_square)
 
@@ -94,6 +123,8 @@ def draw_square(a, square):
         for t,s in timings.items():
             if seg == s:
                 return t
+
+    curseg = getseg()
 
     ngroups = len(groups)
     h = a.shape[0] / ngroups
@@ -122,6 +153,7 @@ def structure_keys(type, button):
     global zoom_idx, rhythm_square
     if type == 'key-press' and button == 'n':
         rhythm_square = Square()
+        rhythm_init()
         composition.append(rhythm_square)
         zoom_idx = ZOOM_LEVELS.index('rhythm')
 def rhythm_keys(type, button):
@@ -198,6 +230,7 @@ def sound_mouse(type, px, py, button):
         for seg in sound_selection:
             tape.use(seg)
 
+        rhythm_init()
         zoom_idx = ZOOM_LEVELS.index('rhythm')
 
     if _oidx != sound_idx or playseg is None:
