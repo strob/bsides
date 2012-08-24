@@ -20,15 +20,6 @@ def video_out(a):
     else:
         sound_video(a)
 
-# def audio_out(a):
-#     if ZOOM_LEVELS[zoom_idx] == 'sound':
-#         sound_audio(a)
-#     elif ZOOM_LEVELS[zoom_idx] == 'rhythm':
-#         rhythm_audio(a)
-
-# def rhythm_audio(a):
-#     pass
-
 def audio_out(a):
     global audio_frame
     seg = getplayseg()
@@ -67,6 +58,18 @@ def audio_advance():
         rhythm_idx = (1 + rhythm_idx) % len(rhythm_sequence)
         playseg = rhythm_sequence[rhythm_idx]
 
+    elif ZOOM_LEVELS[zoom_idx] == 'structure':
+        rhythms = composition.rhythms
+        if len(rhythms) == 0:
+            playseg = None
+            return
+        rhythm_idx = (1 + rhythm_idx)
+        if rhythm_idx >= len(rhythms[structure_rhythm_idx]):
+            rhythm_idx = 0
+            structure_rhythm_idx = (1 + structure_rhythm_idx) % (len(rhythms))
+
+        playseg = rhythms[structure_rhythm_idx][rhythm_idx]
+
     else:
         playseg = None
 
@@ -93,6 +96,9 @@ def sound_video(a):
 
     cv2.putText(a, 'page %d(%d)' % (sound_page_idx, len(sound_pages)), (10, 220), cv2.FONT_HERSHEY_PLAIN, 1, (255,255,0))
     cv2.putText(a, 'sort by %s' % (SOUND_ORDERINGS[sound_order_idx]), (10, 200), cv2.FONT_HERSHEY_PLAIN, 1, (255,255,0))
+
+structure_rhythm_idx = 0
+
 
 def structure_video(a):
     nsquares = len(composition.rhythms)
