@@ -203,7 +203,8 @@ def sound_keys(type, button):
             sound_order_idx = SOUND_ORDERINGS.index('similarity')
         elif button == 't':
             sound_order_idx = SOUND_ORDERINGS.index('time')
-        paginate_sound()
+        if button in 'cmt':
+            paginate_sound()
 
 
 def mouse_in(type, px, py, button):
@@ -275,9 +276,10 @@ def paginate_sound():
 
         # XXX: make lazy (ie. per-page)?
 
-        similarity_tape = Tape(tape.path)
+        similarity_tape = Tape(tape.path, nbins=9)
         base = sound_similarity_base
         nsegs = len(tape.getSegments())
+
         for p in range(10):
             page = []
             sound_pages.append(page)
@@ -298,7 +300,9 @@ def rhythm_mouse(type, px, py, button):
     g_idx = int(py * ngroups)
     if type == 'mouse-button-press' and button == 3 and ngroups > 0:
         print "delete", g_idx
-        rhythm_square.groups.pop(g_idx)
+        group = rhythm_square.groups.pop(g_idx)
+        for s in group:
+            tape.unuse(s)
 
 def sound_mouse(type, px, py, button):
     global sound_idx, sound_dragging, sound_selection, sound_dragging_first, zoom_idx, playseg, audio_frame

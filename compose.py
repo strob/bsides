@@ -43,12 +43,16 @@ class Tape:
             if idx not in self._used:
                 return self.getCluster(idx)
 
+        print 'Warning: everything is used'
+
     def getCluster(self, idx):
         "returns (cluster_key, cluster_idx)"
         for cluster in self._clusters.keys():
             cluster_indices = [X.idx for X in self._clusters[cluster]]
             if idx in cluster_indices:
                 return (cluster, cluster_indices.index(idx))
+
+        print 'Warning: cluster not found for', idx, len(self._segments)
 
     def _get_clusters(self, nbins=36):
         clusters = cluster.cluster(self.path, key=self.key, nbins=nbins)
@@ -79,6 +83,9 @@ class Tape:
 
     def use(self, seg):
         self._used.add(seg.idx)
+
+    def unuse(self, seg):
+        self._used.remove(seg.idx)
 
     def isUsed(self, seg):
         return seg.idx in self._used
