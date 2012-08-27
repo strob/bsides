@@ -140,12 +140,9 @@ def rhythm_video(a):
 
 def draw_square(a, square):
     groups = square.groups
+
     arrangement = square.getArrangement()
     timings = arrangement.timings
-
-    times = sorted(timings.keys())
-    if len(times) == 0:
-        return
 
     duration = square.getDuration()
 
@@ -157,6 +154,10 @@ def draw_square(a, square):
     curseg = getseg()
 
     ngroups = len(groups)
+
+    if ngroups == 0:
+        return
+
     h = a.shape[0] / ngroups
     w = a.shape[1]
     for idx,segs in enumerate(groups):
@@ -174,7 +175,7 @@ def draw_square(a, square):
             x1 = int(st*w/duration)
             x2 = int(end*w/duration)
 
-            color = (0,255,0)
+            color = (0,200,0)
             a[y:y+h,x1:x2] += color
 
     if rhythm_square == square:
@@ -221,13 +222,13 @@ def rhythm_keys(type, button):
             sound_init()
             zoom_idx = ZOOM_LEVELS.index('sound')
         elif button == 'r':
-            rhythm_square.setTheta(mousex)
-            rhythm_change()
+            # rhythm_square.setTheta(mousex)
+            # rhythm_change()
             rhythm_twisting = True
         elif button == 't':
             rhythm_square.addTone(mousex, mousey)
             rhythm_change()
-            rhythm_toning = True
+            # rhythm_toning = True
         elif button == 'Escape':
             structure_init()
             zoom_idx = ZOOM_LEVELS.index('structure')
@@ -369,6 +370,7 @@ def rhythm_mouse(type, px, py, button):
                 rhythm_square.removeFill(g_idx)
             else:
                 rhythm_square.addFill(g_idx)
+            rhythm_change()
         elif button == 3:
             print "delete", g_idx
             group = rhythm_square.remove(g_idx)
