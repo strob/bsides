@@ -1,5 +1,6 @@
 import cluster
 import meap
+from wolftones import wolfcut
 
 import numm
 import numpy as np
@@ -22,7 +23,7 @@ class Tape:
 
     def _get_segments(self):
         a = meap.analysis(self.path)
-        return [Seg(self, X["onset_time"], X["chunk_length"], idx)
+        return [Seg(X["onset_time"], X["chunk_length"], idx)
                 for idx,X in enumerate(a)]
 
     def getSegments(self):
@@ -114,9 +115,7 @@ class Tape:
 
 R=44100                         # XXX: where, ever, do you go?
 class Seg:
-    def __init__(self, tape, start, duration, idx):
-        # XXX: REMOVE ARG
-        self.tape = None#tape
+    def __init__(self, start, duration, idx):
         self.start = start
         self.duration = duration
         self.idx = idx
@@ -127,6 +126,10 @@ class Seg:
     @property
     def end_idx(self):
         return int((self.start + self.duration) * R)
+
+    @property
+    def nframes(self):
+        return self.end_idx - self.st_idx
 
 """
 A Circle is the highest-level composition structure,
@@ -152,9 +155,64 @@ class Square:
     "cluster-independent alternative to `circle`"
     def __init__(self):
         self.groups = []
+        self.theta = 0          # [0,1]
+        self._fills = set()
 
     def append(self, group):
         self.groups.append(group)
+
+    def remove(self, idx):
+        g = self.groups.pop(idx)
+
+        # Adust ``fill'' designation
+        if idx in self._fills:
+            self._fills.remove(idx)
+        np_fills = np.array(list(self._fills))
+        np_fills[np_fills > idx] -= 1
+        self._fills = set(np_fills.tolist())
+
+        return g
+
+    def isFill(self, idx):
+        return idx in self._fills
+    def addFill(self, idx):
+        self._fills.add(idx)
+    def removeFill(self, idx):
+        self._fills.remove(idx)
+
+    def setTheta(self, t):
+        self.theta = t
+    def getLines(self):
+        """We scatter each group evenly between a start and end
+        offset, where both offsets for each group are determined by a
+        single `theta,' between 0 and 1.
+
+        To map theta (deterministically but non-trivially) to 2*N
+        offsets, we use each group's index, duration, percentage, and
+        nsegs as a sort of locally-sensitive hash along with theta.
+
+        As a first pass, let's try, for no particular reason:
+
+        o1 = abs ( cos(pi * theta * (index + 1) + duration) )
+        o2 = abs ( cos(nsegs * theta / percentage) )
+        """
+        nlines = len(self.groups) - len(self._fills)
+        idx = 0
+        lines = []
+        for g_i,group in enumerate(self.groups):
+            if self.isFill(g_i):
+                continue
+            idx += 1
+
+            duration = sum([X.duration for X in group])
+            percentage = duration / self.getDuration()
+            nsegs = len(group)
+
+            o1 = abs( np.cos( np.pi * self.theta * idx + duration ) )
+            o2 = abs( np.cos( nsegs * self.theta / percentage ) )
+
+            lines.append(( o1, o2 ))
+        return lines
 
     def getDuration(self):
         dur = 0
@@ -164,79 +222,106 @@ class Square:
 
     def getArrangement(self):
         timing = {}
-        offset = 0
 
         duration = self.getDuration()
+        lines = self.getLines() # XXX
 
-        for group in self.groups:
-            if len(group) == 0:
-                print 'Warning: empty group'
+        fills = []
+
+        for idx,group in enumerate(self.groups):
+            if self.isFill(idx):
+                fills.extend(group)
                 continue
 
-            step = (duration - offset) / len(group)
+            o1, o2 = lines.pop(0)
+            start = o1 * duration
+            ndur = o2 * (duration - start)
+            step = ndur / len(group)
 
             for idx,seg in enumerate(group):
-                # XXX: prevent exact intersections?
-                timing[idx * step + offset] = seg
+                t = start + idx * step
+                # Avoid exact overlaps.
+                while timing.has_key(t):
+                    print 'Warning: overlap', t
+                    t += np.random.random() * 0.002 - 0.001
 
-            offset += group[0].duration
+                timing[t] = seg
 
-        return Arrangement(timing)
-
-class Circle:
-    def __init__(self, clusters=None, theta=0, duration=10):
-        if clusters is None:
-            clusters = {}
-        self.clusters = clusters # {ClusterID: NSegs}
-        self.theta = theta
-        self.duration = duration
-
-    def getNSegs(self, clusterId):
-        return self.clusters.get(clusterId, 0)
-    def setNSegs(self, clusterId, nsegs):
-        self.clusters[clusterId] = nsegs
-
-    def getArrangement(self, tape):
-        """Naive first-pass:
-        Equally space each cluster within duration, with marginal offsets
-        """
-        offset = 0
-
-        fullclusters = tape.getClusters() # XXX: scarcity, etc.
-
-        timings = {}
-
-        for clusterid, nsegs in self.clusters.items():
-            dur = self.duration - offset
-
-            segs = fullclusters[clusterid][:nsegs]
-
-            if len(segs) == 0:
-                print 'warning: no segs in cluster', clusterid
-                continue
-
-            step = dur / len(segs)
-
-            for idx, seg in enumerate(segs):
-                timings[offset + step*idx] = seg
-
-            offset += segs[0].duration
-
-        return Arrangement(timings)
+        return Arrangement(timing, fills=fills, duration=self.getDuration())
 
 class Arrangement:
-    def __init__(self, timings=None, fills=None, duration=None):
+    def __init__(self, timings=None, fills=None, duration=None, tones=None):
         self.timings = timings
         self.fills = fills
         self.duration = duration
+        self.tones = tones
 
-    def getSequence(self):
-        """Naive first pass:
-        No dithering or filling -- just splice in segments in order.
+    def getArray(self, tape):
+        """Start with insertions. Override on overlap while storing
+        the remainder in a `fills' buffer. Make wolftones!
         """
+        print 'getArray'
+        seq = []                # (start, seg)
+        newfills = []
+        for t in sorted(self.timings.keys()):
+            print t
+            seg = self.timings[t]
 
-        return Sequence([self.timings[X] for X in sorted(self.timings)])
+            # Check for overlaps with the last segment, and occlude it
+            # if necessary.
+            if len(seq) > 0 and seq[-1][0] + seq[-1][1].duration > t:
+                laststart, lastseg = seq.pop()
 
+                newlastdur = t - laststart
+                newlastseg = Seg(lastseg.start, newlastdur, -1)
+                seq.append((laststart, newlastseg))
+                lastsegfill = Seg(lastseg.start + newlastdur,
+                                  lastseg.duration - newlastdur, 
+                                  -1)
+                newfills.append(lastsegfill)
+
+            seq.append((t, seg))
+
+        print 'seq', seq
+        # check if we've overflowed duration
+        if len(seq) > 0:
+            laststart, lastseg = seq[-1]
+            if laststart + lastseg.duration > self.duration:
+                print 'trimming last seg'
+                seq.pop()
+                newlastdur = self.duration-lastseg.start
+                seq.append((laststart, Seg(lastseg.start, newlastdur,-1)))
+                newfills.append(Seg(lastseg.start + newlastdur,
+                                    lastseg.duration - newlastdur,
+                                    -1))
+            
+
+        # Add in the wolftones at every gap -- build up an output array
+        out = np.zeros((R*self.duration, 2), np.int16)
+        cur_t = 0
+        arr = tape.getArray()
+        
+        # Wolftone everything
+        # XXX: Use user-gen composition!
+        buffers = [arr[X.st_idx:X.end_idx] for X in self.fills]
+        buffers.extend([arr[X.st_idx:X.end_idx] for X in newfills])
+        nwolfframes = sum([len(X) for X in buffers])
+        comp = [(1500, nwolfframes)] # XXX: use variable wolf-toning
+        wolftone = wolfcut(comp, buffers)
+
+        for t, seg in seq:
+            if t > cur_t:
+                # XXX: wolftone
+                nframes = int(R*(t - cur_t))
+                out[int(R*cur_t):int(R*cur_t) + nframes] = wolftone[:nframes]
+                wolftone = wolftone[nframes:]
+            out[int(R*t):int(R*t)+seg.nframes] = arr[seg.st_idx:seg.end_idx]
+            cur_t = t + seg.duration
+            
+        return out
+
+    def getSequencePreview(self):
+        return Sequence([self.timings[X] for X in sorted(self.timings.keys())])
 
 class Sequence:
     def __init__(self, segs):
@@ -248,6 +333,7 @@ class Sequence:
             return (2**14 * np.sin(np.linspace(0, 2*np.pi*440, 44100))).astype(np.int16)
 
         # XXX: Assume that all segments are from the same tape (?)
+        # XXX: Also broken now that Seg doesn't point to tape
         arr = self.segs[0].tape.getArray()
 
         return np.concatenate([arr[X.st_idx:X.end_idx] for X in self.segs])

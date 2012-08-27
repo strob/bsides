@@ -3,6 +3,7 @@
 from compose import Tape, Composition, Square
 
 import numpy as np
+import numm
 import cv2
 
 ZOOM_LEVELS = ['structure', 'rhythm', 'sound']
@@ -70,7 +71,7 @@ def audio_advance():
         if rhythm_idx >= len(rhythm_sequence):
             rhythm_idx = 0
             structure_rhythm_idx = (1 + structure_rhythm_idx) % (len(rhythms))
-            rhythm_sequence = rhythms[structure_rhythm_idx].getArrangement().getSequence().segs
+            rhythm_sequence = rhythms[structure_rhythm_idx].getArrangement().getSequencePreview().segs
 
         playseg = rhythm_sequence[rhythm_idx]
 
@@ -117,13 +118,14 @@ def structure_video(a):
 
 rhythm_square = None
 rhythm_sequence = None
+rhythm_twisting = False
 rhythm_idx = 0
 
 def rhythm_init():
     global rhythm_sequence, rhythm_idx
     rhythm_idx = 0
     if len(rhythm_square.groups) > 0:
-        rhythm_sequence = rhythm_square.getArrangement().getSequence().segs
+        rhythm_sequence = rhythm_square.getArrangement().getSequencePreview().segs
     else:
         rhythm_sequence = None
 
@@ -153,6 +155,13 @@ def draw_square(a, square):
     w = a.shape[1]
     for idx,segs in enumerate(groups):
         y = idx * h
+
+        if square.isFill(idx):
+            percent = sum([x.duration for x in segs]) / duration
+            h2 = int(h * percent)
+            a[y+h-h2:y+h] = (255,0,255)
+            continue
+            
         for s in segs:
             st = get_timing(s)
             end = st + s.duration
@@ -181,20 +190,30 @@ def keyboard_in(type, button):
 
 def structure_keys(type, button):
     global zoom_idx, rhythm_square
-    if type == 'key-press' and button == 'n':
-        rhythm_square = Square()
-        rhythm_init()
-        composition.append(rhythm_square)
-        zoom_idx = ZOOM_LEVELS.index('rhythm')
+    if type == 'key-press':
+        if button == 'n':
+            rhythm_square = Square()
+            rhythm_init()
+            composition.append(rhythm_square)
+            zoom_idx = ZOOM_LEVELS.index('rhythm')
+        elif button == 'e':
+            out = np.concatenate([X.getArrangement().getArray(tape) for X in composition.rhythms])
+            numm.np2sound(out, 'export.wav')
+
 def rhythm_keys(type, button):
-    global zoom_idx
+    global zoom_idx, rhythm_twisting
     if type == 'key-press':
         if button == 'n':
             sound_init()
             zoom_idx = ZOOM_LEVELS.index('sound')
+        elif button == 't':
+            rhythm_twisting = True
         elif button == 'Escape':
             structure_init()
             zoom_idx = ZOOM_LEVELS.index('structure')
+    elif type == 'key-release':
+        if button == 't':
+            rhythm_twisting = False
 
 def structure_init():
     global structure_rhythm_idx, playseg, audio_frame, rhythm_sequence
@@ -203,7 +222,7 @@ def structure_init():
     rhythm_idx = 0
     if len(composition.rhythms) == 0:
         return
-    rhythm_sequence = composition.rhythms[structure_rhythm_idx].getArrangement().getSequence().segs
+    rhythm_sequence = composition.rhythms[structure_rhythm_idx].getArrangement().getSequencePreview().segs
     if len(composition.rhythms) > 0:
         playseg = rhythm_sequence[rhythm_idx]
     
@@ -315,14 +334,26 @@ def paginate_sound():
     print 'done paginate'
 
 def rhythm_mouse(type, px, py, button):
+    global rhythm_sequence
     ngroups = len(rhythm_square.groups)
     g_idx = int(py * ngroups)
-    if type == 'mouse-button-press' and button == 3 and ngroups > 0:
-        print "delete", g_idx
-        group = rhythm_square.groups.pop(g_idx)
-        for s in group:
-            tape.unuse(s)
+    if type == 'mouse-button-press' and ngroups > 0:
+        if button == 1:
+            if rhythm_square.isFill(g_idx):
+                rhythm_square.removeFill(g_idx)
+            else:
+                rhythm_square.addFill(g_idx)
+        elif button == 3:
+            print "delete", g_idx
+            group = rhythm_square.remove(g_idx)
+            for s in group:
+                tape.unuse(s)
 
+    if rhythm_twisting:
+        # XXX: relative motion!
+        rhythm_square.setTheta(px)
+        rhythm_sequence = rhythm_square.getArrangement().getSequencePreview().segs
+    
 def sound_mouse(type, px, py, button):
     global sound_idx, sound_dragging, sound_selection, sound_dragging_first, zoom_idx, playseg, audio_frame
 
