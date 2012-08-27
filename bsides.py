@@ -58,12 +58,13 @@ def getplayarr():
         return rhythm_array
 
 def audio_advance():
-    global playseg, audio_frame, rhythm_square, structure_rhythm_idx
+    global playseg, audio_frame, rhythm_square, structure_rhythm_idx, rhythm_array
     audio_frame = 0
 
     if ZOOM_LEVELS[zoom_idx] == 'structure':
         rhythms = composition.rhythms
         if len(rhythms) == 0:
+            rhythm_array = None
             return
         structure_rhythm_idx = (1 + structure_rhythm_idx) % len(rhythms)
         rhythm_square = rhythms[structure_rhythm_idx] 
@@ -205,6 +206,15 @@ def keyboard_in(type, button):
 
 def structure_keys(type, button):
     global zoom_idx, rhythm_square
+
+    r_idx = 0
+    nsquares = len(composition.rhythms)
+    if nsquares > 0:
+        N = int(np.ceil(np.sqrt(nsquares)))
+        r_idx = min(len(composition.rhythms)-1, int(mousex * N) + int(mousey * N) * N)
+
+    print 'sk on', r_idx, len(composition.rhythms)
+
     if type == 'key-press':
         if button == 'n':
             rhythm_square = Square()
@@ -212,8 +222,34 @@ def structure_keys(type, button):
             composition.append(rhythm_square)
             zoom_idx = ZOOM_LEVELS.index('rhythm')
         elif button == 'e':
+            print 'export'
             out = np.concatenate([X.getArrangement().getArray(tape) for X in composition.rhythms])
             numm.np2sound(out, 'export.wav')
+        elif button == 'd':
+            print 'delete', r_idx
+            if len(composition.rhythms) == 0:
+                return
+            rhy = composition.rhythms.pop(r_idx)
+            for i,g in enumerate(rhy.groups):
+                rhy.remove(i)
+                for s in g:
+                    tape.unuse(s)
+            if rhy == rhythm_square:
+                rhythm_square = None
+                audio_advance()
+        elif button == 'c':
+            rhythm_square = composition.rhythms[r_idx]
+            rhythm_init()
+            zoom_idx = ZOOM_LEVELS.index('rhythm')
+        elif button == 'Left':
+            rhy = composition.rhythms.pop(r_idx)
+            n_idx = max(0, r_idx-1)
+            composition.rhythms.insert(n_idx, rhy)
+        elif button == 'Right':
+            rhy = composition.rhythms.pop(r_idx)
+            n_idx = max(len(composition.rhythms), r_idx+1)
+            composition.rhythms.insert(n_idx, rhy)
+
 
 def rhythm_keys(type, button):
     global zoom_idx, rhythm_twisting, rhythm_toning
@@ -415,6 +451,7 @@ def sound_mouse(type, px, py, button):
 
         rhythm_init()
         zoom_idx = ZOOM_LEVELS.index('rhythm')
+        sound_selection = []
 
     if (_oidx != sound_idx) or (playseg is None):
         audio_frame = 0

@@ -159,7 +159,9 @@ class Composition:
 
     @classmethod
     def fromfile(cls, filename):
-        return pickle.load(open(filename))
+        out = pickle.load(open(filename))
+        out.rhythms = filter(lambda x: len(x.groups) > 0, out.rhythms)
+        return out
 
 class Square:
     "cluster-independent alternative to `circle`"
