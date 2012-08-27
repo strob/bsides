@@ -205,7 +205,7 @@ def keyboard_in(type, button):
         sound_keys(type, button)
 
 def structure_keys(type, button):
-    global zoom_idx, rhythm_square
+    global zoom_idx, rhythm_square, structure_rhythm_idx
 
     r_idx = 0
     nsquares = len(composition.rhythms)
@@ -266,6 +266,9 @@ def structure_keys(type, button):
                 dupe.append(newg)
 
             composition.append(dupe)
+        elif button == 'space':
+            structure_rhythm_idx = r_idx - 1
+            audio_advance()
 
 
 def rhythm_keys(type, button):
