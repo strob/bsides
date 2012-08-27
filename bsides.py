@@ -127,6 +127,9 @@ def rhythm_init():
 
 def rhythm_change():
     global rhythm_array, rhythm_sequence, audio_frame
+
+    print 'rhythm_change'
+
     rhythm_sequence = rhythm_square.getArrangement().getSequencePreview().segs
     rhythm_array = rhythm_square.getArrangement().getArray(tape)
     if audio_frame > len(rhythm_array):
@@ -144,7 +147,7 @@ def draw_square(a, square):
     if len(times) == 0:
         return
 
-    duration = times[-1] + timings[times[-1]].duration
+    duration = square.getDuration()
 
     def get_timing(seg):
         for t,s in timings.items():
@@ -178,9 +181,9 @@ def draw_square(a, square):
         a[:,int(a.shape[1] * (audio_frame / float(len(rhythm_array))))] += (255,0,0)
 
     tx = range(w)
-    ty = [int(a.shape[0]*rhythm_square.getTone(X/float(w))) for X in tx]
+    ty = [int(a.shape[0]*square.getTone(X/float(w))) for X in tx]
     a[ty,tx] += (0,0,255)
-    for px,py in rhythm_square._tones.items():
+    for px,py in square._tones.items():
         x = int(px*w)
         y = int(py*a.shape[0])
         cv2.circle(a, (x,y), 3, (0,0,255))

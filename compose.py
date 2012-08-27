@@ -286,9 +286,12 @@ class Arrangement:
         """Start with insertions. Override on overlap while storing
         the remainder in a `fills' buffer. Make wolftones!
         """
+        print 'getArray'
+
         seq = []                # (start, seg)
         newfills = []
         for t in sorted(self.timings.keys()):
+            print t
             seg = self.timings[t]
 
             # Check for overlaps with the last segment, and occlude it
@@ -317,32 +320,50 @@ class Arrangement:
                 newfills.append(Seg(lastseg.start + newlastdur,
                                     lastseg.duration - newlastdur,
                                     -1))
-            
+
+        # Convert everything from seconds to frames so we can be sure
+        # of exactitude.
+        seq = [(int(x[0]*R),x[1]) for x in seq]
 
         # Add in the wolftones at every gap -- build up an output array
-        out = np.zeros((R*self.duration, 2), np.int16)
-        cur_t = 0
+        nframes = int(R*self.duration)
+        out = np.zeros((nframes, 2), np.int16)
+        print 'out', out.shape
+        cur_fr = 0
         arr = tape.getArray()
         
         # Wolftone everything
-        # XXX: Use user-gen composition!
         buffers = [arr[X.st_idx:X.end_idx] for X in self.fills]
         buffers.extend([arr[X.st_idx:X.end_idx] for X in newfills])
         nwolfframes = sum([len(X) for X in buffers])
         comp = self.getComposition(nwolfframes)
 
-        print 'comp', comp
-
         wolftone = wolfcut(comp, buffers)
 
-        for t, seg in seq:
-            if t > cur_t:
-                nframes = int(R*(t - cur_t))
-                out[int(R*cur_t):int(R*cur_t) + nframes] = wolftone[:nframes]
+        print 'wolftone', wolftone.shape
+        print 'seqdur', sum([x[1].nframes for x in seq])
+
+        for st_fr, seg in seq:
+            if st_fr > cur_fr:
+                nframes = st_fr - cur_fr
+                minnframes = min(len(out[cur_fr:]),
+                              min(len(wolftone), nframes))
+                if nframes != minnframes:
+                    # XXX: why do these shapes mismatch sometimes ?!
+                    print 'Warning: shape mismatch! out', nframes, len(out[cur_fr:]), len(wolftone)
+                    nframes = minnframes
+
+                out[cur_fr:cur_fr + nframes] = wolftone[:nframes]
                 wolftone = wolftone[nframes:]
-            out[int(R*t):int(R*t)+seg.nframes] = arr[seg.st_idx:seg.end_idx]
-            cur_t = t + seg.duration
-            
+
+            out[cur_fr:cur_fr+seg.nframes] = arr[seg.st_idx:seg.end_idx]
+            cur_fr = st_fr + seg.nframes
+
+        # end with wolftones if necessary
+        if len(wolftone) > 0:
+            print 'some wolftones remain'
+            out[-len(wolftone):] = wolftone
+
         return out
 
     def getSequencePreview(self):

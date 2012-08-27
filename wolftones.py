@@ -17,7 +17,6 @@ def wolfcut(composition, buffers):
     out_idx = 0
     buf_idx = 0
     for (fr, nf) in composition:
-        print (fr, nf)
         nrem = nf
         period = R/fr
         while nrem > 0:
