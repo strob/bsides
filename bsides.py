@@ -12,6 +12,9 @@ zoom_idx = 0
 playseg = None
 audio_frame = 0
 
+mousex = 0
+mousey = 0
+
 def video_out(a):
     cv2.putText(a, ZOOM_LEVELS[zoom_idx], (10, 20), cv2.FONT_HERSHEY_PLAIN, 1, (255,255,255))
     if ZOOM_LEVELS[zoom_idx] == 'structure':
@@ -172,6 +175,14 @@ def draw_square(a, square):
 
     if rhythm_square == square:
         a[:,int(a.shape[1] * (audio_frame / float(len(rhythm_array))))] += (255,0,0)
+
+    tx = range(w)
+    ty = [int(a.shape[0]*rhythm_square.getTone(X/float(w))) for X in tx]
+    a[ty,tx] += (0,0,255)
+    for px,py in rhythm_square._tones.items():
+        x = int(px*w)
+        y = int(py*a.shape[0])
+        cv2.circle(a, (x,y), 3, (0,0,255))
             
 
 def keyboard_in(type, button):
@@ -205,13 +216,16 @@ def rhythm_keys(type, button):
         if button == 'n':
             sound_init()
             zoom_idx = ZOOM_LEVELS.index('sound')
-        elif button == 't':
+        elif button == 'r':
             rhythm_twisting = True
+        elif button == 't':
+            rhythm_square.addTone(mousex, mousey)
+            rhythm_change()
         elif button == 'Escape':
             structure_init()
             zoom_idx = ZOOM_LEVELS.index('structure')
     elif type == 'key-release':
-        if button == 't':
+        if button == 'r':
             rhythm_twisting = False
             rhythm_change()
 
@@ -251,6 +265,9 @@ def sound_keys(type, button):
 
 
 def mouse_in(type, px, py, button):
+    global mousex, mousey
+    mousex = px
+    mousey = py
     # print type, px, py, button
     if ZOOM_LEVELS[zoom_idx] == 'sound':
         sound_mouse(type, px, py, button)

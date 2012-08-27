@@ -7,6 +7,16 @@ import numpy as np
 
 import pickle
 
+def _linear_interp(map, x):
+    keys = sorted(map.keys())
+    for idx,k in enumerate(keys):
+        if k>x:
+            x1,y1 = (keys[idx-1], map[keys[idx-1]])
+            x2,y2 = (k, map[k])
+            weight= (x-x1) / (x2-x1)
+            return (1-weight) * y1 + weight * y2
+
+
 class Tape:
     def __init__(self, path, key="AvgMFCC(13)", nbins=36):
         self.path = path
@@ -157,6 +167,7 @@ class Square:
         self.groups = []
         self.theta = 0          # [0,1]
         self._fills = set()
+        self._tones = {0:0.5, 1:0.5}
 
     def append(self, group):
         self.groups.append(group)
@@ -172,6 +183,21 @@ class Square:
         self._fills = set(np_fills.tolist())
 
         return g
+
+    def addTone(self, x, y):
+        # truncate to 100 x-values
+        x = int(x * 100) / 100.0
+
+        self._tones[x] = y
+
+    def getTone(self, x):
+        assert x>=0 and x<=1, "x must be in range (0,1)"
+
+        if x in self._tones:
+            return self._tones[x]
+
+        # linear interpolation
+        return _linear_interp(self._tones, x)
 
     def isFill(self, idx):
         return idx in self._fills
@@ -247,7 +273,7 @@ class Square:
 
                 timing[t] = seg
 
-        return Arrangement(timing, fills=fills, duration=self.getDuration())
+        return Arrangement(timing, fills=fills, duration=self.getDuration(), tones=self._tones)
 
 class Arrangement:
     def __init__(self, timings=None, fills=None, duration=None, tones=None):
@@ -303,13 +329,14 @@ class Arrangement:
         buffers = [arr[X.st_idx:X.end_idx] for X in self.fills]
         buffers.extend([arr[X.st_idx:X.end_idx] for X in newfills])
         nwolfframes = sum([len(X) for X in buffers])
-        comp = [(1500, nwolfframes)] # XXX: use variable wolf-toning
+        comp = self.getComposition(nwolfframes)
+
+        print 'comp', comp
 
         wolftone = wolfcut(comp, buffers)
 
         for t, seg in seq:
             if t > cur_t:
-                # XXX: wolftone
                 nframes = int(R*(t - cur_t))
                 out[int(R*cur_t):int(R*cur_t) + nframes] = wolftone[:nframes]
                 wolftone = wolftone[nframes:]
@@ -320,6 +347,35 @@ class Arrangement:
 
     def getSequencePreview(self):
         return Sequence([self.timings[X] for X in sorted(self.timings.keys())])
+
+    def getTone(self, x, min_f=27.5, max_f=4186.01):
+        # XXX: duplicated code.
+
+        assert x>=0 and x<=1, "x must be in range (0,1)"
+
+        if x in self.tones:
+            y = self.tones[x]
+
+        else:
+            # linear interpolation
+            y = _linear_interp(self.tones, x)
+
+        return int(np.exp2(np.log2(y*min_f + (1-y)*max_f)))
+
+    def getComposition(self, nframes):
+        step_frames = int(max(R/30, nframes/100)) # Don't make too many notes!
+
+        comp = []
+        cur_frame = 0
+        while cur_frame < nframes:
+            amnt = min(nframes-cur_frame, step_frames)
+            percent = cur_frame / float(nframes)
+
+            comp.append((self.getTone(percent), amnt))
+
+            cur_frame += amnt
+
+        return comp
 
 class Sequence:
     def __init__(self, segs):
