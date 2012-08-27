@@ -193,8 +193,8 @@ class Square:
 
         As a first pass, let's try, for no particular reason:
 
-        o1 = abs ( cos(pi * theta * (index + 1) + duration) )
-        o2 = abs ( cos(nsegs * theta / percentage) )
+        o1 = pow( abs ( cos(pi * theta * (index + 1) + duration) ), 2)
+        o2 = pow( abs ( cos(nsegs * theta / percentage) ), 0.5)
         """
         nlines = len(self.groups) - len(self._fills)
         idx = 0
@@ -208,8 +208,8 @@ class Square:
             percentage = duration / self.getDuration()
             nsegs = len(group)
 
-            o1 = abs( np.cos( np.pi * self.theta * idx + duration ) )
-            o2 = abs( np.cos( nsegs * self.theta / percentage ) )
+            o1 = pow( abs( np.cos( np.pi * self.theta * idx + duration ) ), 2)
+            o2 = pow( abs( np.cos( nsegs * self.theta / percentage ) ), 0.5)
 
             lines.append(( o1, o2 ))
         return lines
@@ -260,11 +260,9 @@ class Arrangement:
         """Start with insertions. Override on overlap while storing
         the remainder in a `fills' buffer. Make wolftones!
         """
-        print 'getArray'
         seq = []                # (start, seg)
         newfills = []
         for t in sorted(self.timings.keys()):
-            print t
             seg = self.timings[t]
 
             # Check for overlaps with the last segment, and occlude it
@@ -282,7 +280,6 @@ class Arrangement:
 
             seq.append((t, seg))
 
-        print 'seq', seq
         # check if we've overflowed duration
         if len(seq) > 0:
             laststart, lastseg = seq[-1]

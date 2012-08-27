@@ -23,12 +23,12 @@ def video_out(a):
 
 def audio_out(a):
     global audio_frame
-    seg = getplayseg()
+    segarr = getplayarr()
 
-    if seg is None:
+    if segarr is None:
         return
 
-    segarr = tape.getArray()[seg.st_idx:seg.end_idx][audio_frame:]
+    segarr = segarr[audio_frame:]
 
     if len(segarr) < len(a):
         a[:len(segarr)] = segarr
@@ -41,41 +41,32 @@ def audio_out(a):
 def getseg():
     if ZOOM_LEVELS[zoom_idx] == 'sound':
         return sound_pages[sound_page_idx][sound_idx]
-    elif ZOOM_LEVELS[zoom_idx] == 'rhythm':
-        if rhythm_sequence:
-            return rhythm_sequence[rhythm_idx]
-    else:
-        if rhythm_sequence:
-            return rhythm_sequence[rhythm_idx]
 
 def getplayseg():
     return playseg
 
-def audio_advance():
-    global playseg, rhythm_idx, audio_frame, rhythm_sequence, structure_rhythm_idx
-    audio_frame = 0
-    if ZOOM_LEVELS[zoom_idx] == 'rhythm':
-        if rhythm_sequence is None:
-            playseg = None
+def getplayarr():
+    if ZOOM_LEVELS[zoom_idx] == 'sound':
+        s = getplayseg()
+        if s is None:
             return
+        return tape.getArray()[s.st_idx:s.end_idx]
+    else:
+        return rhythm_array
 
-        rhythm_idx = (1 + rhythm_idx) % len(rhythm_sequence)
-        playseg = rhythm_sequence[rhythm_idx]
+def audio_advance():
+    global playseg, audio_frame, rhythm_square, structure_rhythm_idx
+    audio_frame = 0
 
-    elif ZOOM_LEVELS[zoom_idx] == 'structure':
+    if ZOOM_LEVELS[zoom_idx] == 'structure':
         rhythms = composition.rhythms
         if len(rhythms) == 0:
-            playseg = None
             return
-        rhythm_idx = (1 + rhythm_idx)
-        if rhythm_idx >= len(rhythm_sequence):
-            rhythm_idx = 0
-            structure_rhythm_idx = (1 + structure_rhythm_idx) % (len(rhythms))
-            rhythm_sequence = rhythms[structure_rhythm_idx].getArrangement().getSequencePreview().segs
+        structure_rhythm_idx = (1 + structure_rhythm_idx) % len(rhythms)
+        rhythm_square = rhythms[structure_rhythm_idx] 
+        rhythm_change()
 
-        playseg = rhythm_sequence[rhythm_idx]
-
-    else:
+    elif ZOOM_LEVELS[zoom_idx] == 'sound':
         playseg = None
 
 def sound_video(a):
@@ -118,16 +109,24 @@ def structure_video(a):
 
 rhythm_square = None
 rhythm_sequence = None
+rhythm_array = None
 rhythm_twisting = False
-rhythm_idx = 0
 
 def rhythm_init():
-    global rhythm_sequence, rhythm_idx
-    rhythm_idx = 0
+    global rhythm_sequence, audio_frame, rhythm_array
+    audio_frame = 0
     if len(rhythm_square.groups) > 0:
-        rhythm_sequence = rhythm_square.getArrangement().getSequencePreview().segs
+        rhythm_change()
     else:
         rhythm_sequence = None
+        rhythm_array = None
+
+def rhythm_change():
+    global rhythm_array, rhythm_sequence, audio_frame
+    rhythm_sequence = rhythm_square.getArrangement().getSequencePreview().segs
+    rhythm_array = rhythm_square.getArrangement().getArray(tape)
+    if audio_frame > len(rhythm_array):
+        audio_frame = 0
 
 def rhythm_video(a):
     draw_square(a, rhythm_square)
@@ -159,7 +158,7 @@ def draw_square(a, square):
         if square.isFill(idx):
             percent = sum([x.duration for x in segs]) / duration
             h2 = int(h * percent)
-            a[y+h-h2:y+h] = (255,0,255)
+            a[y+h-h2:y+h] += (255,0,255)
             continue
             
         for s in segs:
@@ -169,10 +168,9 @@ def draw_square(a, square):
             x2 = int(end*w/duration)
 
             color = (0,255,0)
-            if s == curseg:
-                color = (255,0,0)
-
             a[y:y+h,x1:x2] += color
+
+    a[:,int(320 * (audio_frame / float(len(rhythm_array))))] += (255,0,0)
             
 
 def keyboard_in(type, button):
@@ -216,15 +214,14 @@ def rhythm_keys(type, button):
             rhythm_twisting = False
 
 def structure_init():
-    global structure_rhythm_idx, playseg, audio_frame, rhythm_sequence
+    global structure_rhythm_idx, audio_frame, rhythm_square
     audio_frame = 0
     structure_rhythm_idx = 0
-    rhythm_idx = 0
+
     if len(composition.rhythms) == 0:
         return
-    rhythm_sequence = composition.rhythms[structure_rhythm_idx].getArrangement().getSequencePreview().segs
-    if len(composition.rhythms) > 0:
-        playseg = rhythm_sequence[rhythm_idx]
+    rhythm_square = composition.rhythms[structure_rhythm_idx]
+    rhythm_change()
     
 
 def sound_keys(type, button):
@@ -352,7 +349,7 @@ def rhythm_mouse(type, px, py, button):
     if rhythm_twisting:
         # XXX: relative motion!
         rhythm_square.setTheta(px)
-        rhythm_sequence = rhythm_square.getArrangement().getSequencePreview().segs
+        rhythm_change()
     
 def sound_mouse(type, px, py, button):
     global sound_idx, sound_dragging, sound_selection, sound_dragging_first, zoom_idx, playseg, audio_frame
