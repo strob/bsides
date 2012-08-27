@@ -225,7 +225,7 @@ def structure_keys(type, button):
             print 'export'
             out = np.concatenate([X.getArrangement().getArray(tape) for X in composition.rhythms])
             numm.np2sound(out, 'export.wav')
-        elif button == 'd':
+        elif button == 'x':
             print 'delete', r_idx
             if len(composition.rhythms) == 0:
                 return
@@ -249,6 +249,23 @@ def structure_keys(type, button):
             rhy = composition.rhythms.pop(r_idx)
             n_idx = max(len(composition.rhythms), r_idx+1)
             composition.rhythms.insert(n_idx, rhy)
+        elif button == 'd':
+            print 'DUPLICATE'
+            rhy = composition.rhythms[r_idx]
+            dupe = Square()
+            dupe._fills = rhy._fills.copy()
+            dupe._tones = rhy._tones.copy()
+            dupe.theta = rhy.theta
+
+            for g in rhy.groups:
+                newg = []
+                for s in g:
+                    news = tape.getNearUnsed(s)
+                    tape.use(news)
+                    newg.append(news)
+                dupe.append(newg)
+
+            composition.append(dupe)
 
 
 def rhythm_keys(type, button):

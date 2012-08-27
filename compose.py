@@ -52,6 +52,16 @@ class Tape:
 
         return [self._segments[X] for X in closeness]
 
+    def getNearUnsed(self, seg):
+        F = self.getFeatures()
+        obs = F[seg.idx]
+
+        closeness = pow(F - obs, 2).sum(axis=1).argsort()
+
+        for idx in closeness:
+            if idx not in self._used:
+                return self._segments[idx]
+
     def getClosestUnused(self, seg):
         F = self.getFeatures()
         obs = F[seg.idx]
