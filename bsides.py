@@ -114,6 +114,7 @@ rhythm_square = None
 rhythm_sequence = None
 rhythm_array = None
 rhythm_twisting = False
+rhythm_toning = False
 
 def rhythm_init():
     global rhythm_sequence, audio_frame, rhythm_array
@@ -211,22 +212,28 @@ def structure_keys(type, button):
             numm.np2sound(out, 'export.wav')
 
 def rhythm_keys(type, button):
-    global zoom_idx, rhythm_twisting
+    global zoom_idx, rhythm_twisting, rhythm_toning
     if type == 'key-press':
         if button == 'n':
             sound_init()
             zoom_idx = ZOOM_LEVELS.index('sound')
         elif button == 'r':
+            rhythm_square.setTheta(mousex)
+            rhythm_change()
             rhythm_twisting = True
         elif button == 't':
             rhythm_square.addTone(mousex, mousey)
             rhythm_change()
+            rhythm_toning = True
         elif button == 'Escape':
             structure_init()
             zoom_idx = ZOOM_LEVELS.index('structure')
     elif type == 'key-release':
         if button == 'r':
             rhythm_twisting = False
+            rhythm_change()
+        if button == 't':
+            rhythm_toning = False
             rhythm_change()
 
 def structure_init():
@@ -369,6 +376,8 @@ def rhythm_mouse(type, px, py, button):
         # XXX: relative motion!
         rhythm_square.setTheta(px)
         rhythm_sequence = rhythm_square.getArrangement().getSequencePreview().segs
+    elif rhythm_toning:
+        rhythm_square.addTone(px, py)
     
 def sound_mouse(type, px, py, button):
     global sound_idx, sound_dragging, sound_selection, sound_dragging_first, zoom_idx, playseg, audio_frame
