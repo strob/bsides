@@ -230,6 +230,9 @@ def rhythm_keys(type, button):
             rhythm_change()
             # rhythm_toning = True
         elif button == 'Escape':
+            if len(rhythm_square.groups) == 0:
+                composition.rhythms.remove(rhythm_square)
+
             structure_init()
             zoom_idx = ZOOM_LEVELS.index('structure')
     elif type == 'key-release':
