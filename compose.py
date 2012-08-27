@@ -286,7 +286,7 @@ class Arrangement:
             if laststart + lastseg.duration > self.duration:
                 print 'trimming last seg'
                 seq.pop()
-                newlastdur = self.duration-lastseg.start
+                newlastdur = self.duration-laststart
                 seq.append((laststart, Seg(lastseg.start, newlastdur,-1)))
                 newfills.append(Seg(lastseg.start + newlastdur,
                                     lastseg.duration - newlastdur,
@@ -304,6 +304,7 @@ class Arrangement:
         buffers.extend([arr[X.st_idx:X.end_idx] for X in newfills])
         nwolfframes = sum([len(X) for X in buffers])
         comp = [(1500, nwolfframes)] # XXX: use variable wolf-toning
+
         wolftone = wolfcut(comp, buffers)
 
         for t, seg in seq:

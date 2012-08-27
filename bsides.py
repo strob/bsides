@@ -170,7 +170,8 @@ def draw_square(a, square):
             color = (0,255,0)
             a[y:y+h,x1:x2] += color
 
-    a[:,int(320 * (audio_frame / float(len(rhythm_array))))] += (255,0,0)
+    if rhythm_square == square:
+        a[:,int(a.shape[1] * (audio_frame / float(len(rhythm_array))))] += (255,0,0)
             
 
 def keyboard_in(type, button):
@@ -212,6 +213,7 @@ def rhythm_keys(type, button):
     elif type == 'key-release':
         if button == 't':
             rhythm_twisting = False
+            rhythm_change()
 
 def structure_init():
     global structure_rhythm_idx, audio_frame, rhythm_square
@@ -349,7 +351,7 @@ def rhythm_mouse(type, px, py, button):
     if rhythm_twisting:
         # XXX: relative motion!
         rhythm_square.setTheta(px)
-        rhythm_change()
+        rhythm_sequence = rhythm_square.getArrangement().getSequencePreview().segs
     
 def sound_mouse(type, px, py, button):
     global sound_idx, sound_dragging, sound_selection, sound_dragging_first, zoom_idx, playseg, audio_frame
