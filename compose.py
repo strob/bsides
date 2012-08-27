@@ -356,7 +356,10 @@ class Arrangement:
                 out[cur_fr:cur_fr + nframes] = wolftone[:nframes]
                 wolftone = wolftone[nframes:]
 
-            out[cur_fr:cur_fr+seg.nframes] = arr[seg.st_idx:seg.end_idx]
+            amnt = min(len(out)-cur_fr, seg.nframes)
+            if amnt != seg.nframes:
+                print 'Out is a little short:', amnt, seg.nframes
+            out[cur_fr:cur_fr+amnt] = arr[seg.st_idx:seg.st_idx + amnt]
             cur_fr = st_fr + seg.nframes
 
         # end with wolftones if necessary
