@@ -417,13 +417,12 @@ class Sequence:
     def __init__(self, segs):
         self.segs = segs
 
-    def getArray(self):
+    def getArray(self, tape):
         if len(self.segs) == 0:
             print 'warning: no segments'
             return (2**14 * np.sin(np.linspace(0, 2*np.pi*440, 44100))).astype(np.int16)
 
         # XXX: Assume that all segments are from the same tape (?)
-        # XXX: Also broken now that Seg doesn't point to tape
-        arr = self.segs[0].tape.getArray()
+        arr = tape.getArray()
 
         return np.concatenate([arr[X.st_idx:X.end_idx] for X in self.segs])

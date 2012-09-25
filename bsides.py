@@ -132,7 +132,8 @@ def rhythm_change():
     print 'rhythm_change'
 
     rhythm_sequence = rhythm_square.getArrangement().getSequencePreview().segs
-    rhythm_array = rhythm_square.getArrangement().getArray(tape)
+    #rhythm_array = rhythm_square.getArrangement().getArray(tape)
+    rhythm_array = rhythm_square.getArrangement().getSequencePreview().getArray(tape)
     if audio_frame > len(rhythm_array):
         audio_frame = 0
 
