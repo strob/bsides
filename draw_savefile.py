@@ -5,7 +5,7 @@ from functools import reduce
 
 import compose
 
-def draw(comp, W=1200, H=600):
+def draw(comp, base, W=3000, H=2000):
     arr = np.zeros((H,W,3), np.uint8)
     segs = reduce(lambda x,y: x+y, [X.getArrangement().getSequencePreview().segs for X in comp.rhythms])
 
@@ -19,9 +19,13 @@ def draw(comp, W=1200, H=600):
 
         out_t += seg.duration
 
-    return arr
+    base = cv2.resize(numm.image2np(base), (W,H))
+
+    base[arr==0] = 0
+
+    return base
 
 if __name__=='__main__':
     import sys
     comp = compose.Composition.fromfile(sys.argv[1])
-    numm.np2image(draw(comp), sys.argv[2])
+    numm.np2image(draw(comp, sys.argv[2]), sys.argv[3])
